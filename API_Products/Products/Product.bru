@@ -1,0 +1,23 @@
+meta {
+  name: Product
+  type: http
+  seq: 7
+}
+
+delete {
+  url: http://localhost:3000/api/products/6910cc3981e6283a6370cfed
+  body: none
+  auth: inherit
+}
+
+body:multipart-form {
+  name: Adaptador VGA
+  price: 200
+  quantity: 10
+  image: @file(/Users/sebastiangallegos/Downloads/AdaptadorVGA.jpg)
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

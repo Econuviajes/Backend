@@ -1,0 +1,25 @@
+meta {
+  name: Register
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:3000/api/register
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "username": "Sebastián",
+    "email": "gallegossebastian2709@gmail.com",
+    "password": "rootpassword"
+  }
+  
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

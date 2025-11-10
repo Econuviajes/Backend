@@ -1,0 +1,31 @@
+meta {
+  name: Update Product
+  type: http
+  seq: 8
+}
+
+put {
+  url: http://localhost:3000/api/products/updatewithoutimage/6910c5854242d126211d2040
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name":"Adaptador VGA Premium",
+    "price": 200,
+    "quantity": 10
+  
+  }
+}
+
+body:multipart-form {
+  name: Adaptador VGA Premium
+  price: 200
+  quantity: 10
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Login Admin
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:3000/api/login
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {"email":"admin@admin.com",
+  "password":"Admin.2025#"}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
