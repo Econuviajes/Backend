@@ -4,7 +4,8 @@
   "description": "Sistema Web para productos",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "setup": "node src/libs/initialSetup.js"
   },
   "keywords": [],
   "author": "",
