@@ -5,8 +5,8 @@ import cors from 'cors';
 
 // Importamos las rutas para usuarios
 import authRoutes from './routes/user.routes.js'
-// Importamos las rutas para productos
-import productRoutes from './routes/products.routes.js'
+// Importamos las rutas para viajes
+import viajeRoutes from './routes/viajes.routes.js'
 
 const app = express();
 app.use(cors({
@@ -20,6 +20,6 @@ app.use(express.urlencoded({extended: false}));
 // Indicamos que inicie el objeto authRoutes
 // https://localhost:3000/api/login     o /api/register
 app.use('/api/', authRoutes)
-app.use('/api/', productRoutes);
+app.use('/api/', viajeRoutes);
 
 export default app;

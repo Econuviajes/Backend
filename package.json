@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "Sistema Web para productos",
+  "description": "Sistema Web para viajes",
   "main": "index.js",
   "scripts": {
     "dev": "nodemon src/index.js",
