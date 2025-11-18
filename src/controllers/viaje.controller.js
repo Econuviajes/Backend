@@ -54,7 +54,7 @@ export const getViajeById = async (req, res) => {
     const viaje = await Viaje.findById(req.params.id);
     if (!viaje)
       // No se encotró el viaje en la BD
-      res.status(404).json({ message: ["Viaje no eonctrado"] });
+      res.status(404).json({ message: ["Viaje no encontrado"] });
     res.json(viaje);
   } catch (error) {
     console.log(error);
@@ -65,48 +65,48 @@ export const getViajeById = async (req, res) => {
 // Función para eliminar UN viaje por ID
 export const deleteViaje = async (req, res) => {
   try {
-    // delete from viaje where id = $id
+    // Buscar el viaje
     const viaje = await Viaje.findById(req.params.id);
-    if (!viaje)
-      // No se encotró el viaje en la BD
-      res.status(404).json({ message: ["Viaje no encontrado"] });
-    res.json(viaje);
+    if (!viaje) {
+      return res.status(404).json({ message: ["Viaje no encontrado"] });
+    }
 
-    // Eliminamos la imagen de cloudinary, extraemos el nombre de la imagen sin URL ni extensión
-    // Obtenemos la URL de la imagen de cloudinary
-    const imageURL = viaje.imagen;
-    // Dividimos por diagonales / la URL y nos quedamos con el último parámetro que contiene el nombre de la imagen con la extensión
-    const urlArray = imageURL.split("/");
+    // Si tiene imagen, borrarla de Cloudinary
+    if (viaje.imagen) {
+      const imageURL = viaje.imagen;
+      const urlArray = imageURL.split("/");
+      const image = urlArray[urlArray.length - 1]; // Último elemento
+      const imageName = image.split(".")[0];
 
-    // image contendrá el id de la imagen en cloudinary
-    const image = urlArray[urlArray.length - 1]; // Último elemento
+      const result = await cloudinary.uploader.destroy(imageName);
 
-    // Dividimos el nombre de la imagen para quitar la extensión
-    const imageName = image.split(".")[0];
-
-    // Eliminamos la imagen de cloudinary
-    const result = await cloudinary.uploader.destroy(imageName);
-    if (result.result === "ok") {
-      // Si se eliminó la imagen, ahora eliminamos el viaje
-      const deletedViaje = await Viaje.findByIdAndDelete(req.params.id);
-
-      if (!deletedViaje)
-        // Error al eliminar el viaje
+      // Si Cloudinary falla feo
+      if (result.result !== "ok" && result.result !== "not found") {
         return res
-          .status(404)
-          .json({ message: ["Viaje no encontrado para eliminar"] });
-      res.json(deletedViaje);
-    } else {
-      // Error al eliminar la imagen
+          .status(500)
+          .json({ message: ["Error al eliminar la imagen del viaje"] });
+      }
+    }
+
+    // Borrar el viaje de la BD
+    const deletedViaje = await Viaje.findByIdAndDelete(req.params.id);
+
+    if (!deletedViaje) {
       return res
-        .status(500)
-        .json({ message: ["Error al eliminar la imagen del viaje"] });
-    } // Fin del else
+        .status(404)
+        .json({ message: ["Viaje no encontrado para eliminar"] });
+    }
+
+    // Respuesta final 
+    return res.json(deletedViaje);
   } catch (error) {
-    //ConsoleLogger.log(error);
-    res.status(500).json({ message: ["Error al eliminar un viaje por ID"] });
+    console.log(error);
+    return res
+      .status(500)
+      .json({ message: ["Error al eliminar un viaje por ID"] });
   }
 };
+
 
 // Función para actualizar UN viaje por ID sin actualizar la imagen
 export const updateViajeWithoutImage = async (req, res) => {
