@@ -16,12 +16,6 @@ export const editorSchema = z.object({
     })
     .email({ message: "El email no es válido" }),
 
-  telefono: z
-    .string()
-    .min(8, { message: "El teléfono debe tener al menos 8 caracteres" })
-    .optional()
-    .or(z.literal("")),
-
   rol: z
     .enum(["Admin", "Editor"], {
       errorMap: () => ({ message: "El rol debe ser Admin o Editor" }),
@@ -65,4 +59,3 @@ export const editorUpdateSchema = z.object({
 
 // Schema para actualizar editor sin imagen (mismo que updateSchema)
 export const editorUpdateSchemaWithoutImage = editorUpdateSchema;
-

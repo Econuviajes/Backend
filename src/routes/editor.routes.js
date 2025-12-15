@@ -18,6 +18,7 @@ import {
   editorUpdateSchema,
   editorUpdateSchemaWithoutImage,
 } from "../schemas/editor.schemas.js";
+import { registerSchema } from "../schemas/auth.schemas.js";
 
 //Importamos el middleware para subir imagenes a Cloudinary (opcional para avatar)
 import { uploadToCloudinaryOptional } from "../middlewares/uploadImageOptional.js";
@@ -32,10 +33,10 @@ router.get("/editores", authRequired, isAdmin, getEditores);
 //Ruta para crear un editor
 router.post(
   "/editores",
-  authRequired,
-  isAdmin,
-  uploadToCloudinaryOptional,
-  validateSchema(editorSchema),
+  /* authRequired, */
+  /*  isAdmin, */
+  /* uploadToCloudinaryOptional, */
+  validateSchema(registerSchema),
   createEditor
 );
 
@@ -65,4 +66,3 @@ router.put(
 );
 
 export default router;
-
