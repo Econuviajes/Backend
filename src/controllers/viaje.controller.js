@@ -17,27 +17,42 @@ export const getViajes = async (req, res) => {
 export const createViaje = async (req, res) => {
   try {
     const {
-      titulo,
+      nombre,
       destino,
-      pais,
+      descripcion,
+      fechaInicioISO,
+      fechaFinISO,
       precio,
-      duracionDias,
-      fechaSalida,
-      fechaRegreso,
-      descripcion
+      capacidadAsientos
      } = req.body;
 
+    // Si hay múltiples imágenes, usar la primera como cover y todas como gallery
+    // Si solo hay una imagen (req.urlImage), usarla como cover y gallery
+    let coverImageUrl = "";
+    let galleryImageUrls = [];
+
+    if (req.imageUrls && req.imageUrls.length > 0) {
+      // Múltiples imágenes subidas
+      coverImageUrl = req.imageUrls[0];
+      galleryImageUrls = req.imageUrls;
+    } else if (req.urlImage) {
+      // Una sola imagen subida
+      coverImageUrl = req.urlImage;
+      galleryImageUrls = [req.urlImage];
+    } else {
+      return res.status(400).json({ message: ["Se requiere al menos una imagen"] });
+    }
 
     const newViaje = new Viaje({
-      titulo,
-      destino,
-      pais,
-      precio,
-      duracionDias,
-      fechaSalida,
-      fechaRegreso,
-      descripcion,
-      imagen: req.urlImage,
+      nombre: nombre.trim(),
+      destino: destino.trim(),
+      descripcion: descripcion.trim(),
+      fechaInicioISO,
+      fechaFinISO,
+      precio: Number(precio),
+      capacidadAsientos: Number(capacidadAsientos),
+      coverImageUrl,
+      galleryImageUrls,
       user: req.user.id,
     }); //save = insert into viaje values (name, price, quantity);
     const savedViaje = await newViaje.save();
@@ -71,20 +86,18 @@ export const deleteViaje = async (req, res) => {
       return res.status(404).json({ message: ["Viaje no encontrado"] });
     }
 
-    // Si tiene imagen, borrarla de Cloudinary
-    if (viaje.imagen) {
-      const imageURL = viaje.imagen;
-      const urlArray = imageURL.split("/");
-      const image = urlArray[urlArray.length - 1]; // Último elemento
-      const imageName = image.split(".")[0];
-
-      const result = await cloudinary.uploader.destroy(imageName);
-
-      // Si Cloudinary falla feo
-      if (result.result !== "ok" && result.result !== "not found") {
-        return res
-          .status(500)
-          .json({ message: ["Error al eliminar la imagen del viaje"] });
+    // Si tiene imágenes, borrarlas de Cloudinary
+    if (viaje.galleryImageUrls && viaje.galleryImageUrls.length > 0) {
+      for (const imageUrl of viaje.galleryImageUrls) {
+        try {
+          const urlArray = imageUrl.split("/");
+          const image = urlArray[urlArray.length - 1];
+          const imageName = image.split(".")[0];
+          await cloudinary.uploader.destroy(imageName);
+        } catch (cloudinaryError) {
+          console.log("Error al eliminar imagen:", cloudinaryError);
+          // Continuamos aunque falle la eliminación de alguna imagen
+        }
       }
     }
 
@@ -108,25 +121,35 @@ export const deleteViaje = async (req, res) => {
 };
 
 
-// Función para actualizar UN viaje por ID sin actualizar la imagen
+// Función para actualizar UN viaje por ID sin actualizar las imágenes
 export const updateViajeWithoutImage = async (req, res) => {
   try {
     const viaje = await Viaje.findById(req.params.id);
-    if (!viaje)
-      // No se encotró el viaje en la BD
-      res.status(404).json({ message: ["Viaje no encontrado"] });
+    if (!viaje) {
+      return res.status(404).json({ message: ["Viaje no encontrado"] });
+    }
+
+    const {
+      nombre,
+      destino,
+      descripcion,
+      fechaInicioISO,
+      fechaFinISO,
+      precio,
+      capacidadAsientos
+    } = req.body;
 
     // Obtenemos los datos a actualizar
     const dataViaje = {
-      titulo: req.body.titulo,
-      destino: req.body.destino,
-      pais: req.body.pais,
-      precio: req.body.precio,
-      duracionDias: req.body.duracionDias,
-      fechaSalida: req.body.fechaSalida,
-      fechaRegreso: req.body.fechaRegreso,
-      descripcion: req.body.descripcion,
-      imagen: viaje.imagen, 
+      nombre: nombre ? nombre.trim() : viaje.nombre,
+      destino: destino ? destino.trim() : viaje.destino,
+      descripcion: descripcion ? descripcion.trim() : viaje.descripcion,
+      fechaInicioISO: fechaInicioISO || viaje.fechaInicioISO,
+      fechaFinISO: fechaFinISO || viaje.fechaFinISO,
+      precio: precio !== undefined ? Number(precio) : viaje.precio,
+      capacidadAsientos: capacidadAsientos !== undefined ? Number(capacidadAsientos) : viaje.capacidadAsientos,
+      coverImageUrl: viaje.coverImageUrl,
+      galleryImageUrls: viaje.galleryImageUrls,
       user: req.user.id,
     };
     const updatedViaje = await Viaje.findByIdAndUpdate(
@@ -136,50 +159,83 @@ export const updateViajeWithoutImage = async (req, res) => {
     );
     res.json(updatedViaje);
   } catch (error) {
-    //ConsoleLogger.log(error);
+    console.log(error);
     res
       .status(500)
       .json({ message: ["Error al actualizar un viaje por ID"] });
   }
 }; // Fin de updateViajeWithoutImage
 
-// Función para actualizar UN viaje y la imagen por ID
+// Función para actualizar UN viaje y las imágenes por ID
 export const updateViajeWithImage = async (req, res) => {
   try {
     const viaje = await Viaje.findById(req.params.id);
-    if (!viaje)
-      // No se encotró el viaje en la BD
-      res.status(404).json({ message: ["Viaje no encontrado"] });
+    if (!viaje) {
+      return res.status(404).json({ message: ["Viaje no encontrado"] });
+    }
 
-    if (!req.file)
-      return res.status(500).json({
-        message: ["Error al actualizar el viaje, imagen no encontrada"],
-      });
+    // Verificar si hay imágenes nuevas
+    let coverImageUrl = viaje.coverImageUrl;
+    let galleryImageUrls = viaje.galleryImageUrls;
 
-    // Obtenemos la URL de la imagen de cloudinary
-    const imageURL = viaje.imagen;
-    const urlArray = imageURL.split("/");
-    const image = urlArray[urlArray.length - 1]; // Último elemento
-    const imageName = image.split(".")[0];
+    if (req.imageUrls && req.imageUrls.length > 0) {
+      // Eliminar imágenes antiguas de Cloudinary
+      if (viaje.galleryImageUrls && viaje.galleryImageUrls.length > 0) {
+        for (const oldImageUrl of viaje.galleryImageUrls) {
+          try {
+            const urlArray = oldImageUrl.split("/");
+            const image = urlArray[urlArray.length - 1];
+            const imageName = image.split(".")[0];
+            await cloudinary.uploader.destroy(imageName);
+          } catch (cloudinaryError) {
+            console.log("Error al eliminar imagen antigua:", cloudinaryError);
+            // Continuamos aunque falle la eliminación
+          }
+        }
+      }
+      // Usar las nuevas imágenes
+      coverImageUrl = req.imageUrls[0];
+      galleryImageUrls = req.imageUrls;
+    } else if (req.urlImage) {
+      // Una sola imagen nueva
+      // Eliminar imágenes antiguas
+      if (viaje.galleryImageUrls && viaje.galleryImageUrls.length > 0) {
+        for (const oldImageUrl of viaje.galleryImageUrls) {
+          try {
+            const urlArray = oldImageUrl.split("/");
+            const image = urlArray[urlArray.length - 1];
+            const imageName = image.split(".")[0];
+            await cloudinary.uploader.destroy(imageName);
+          } catch (cloudinaryError) {
+            console.log("Error al eliminar imagen antigua:", cloudinaryError);
+          }
+        }
+      }
+      coverImageUrl = req.urlImage;
+      galleryImageUrls = [req.urlImage];
+    }
 
-    const result = await cloudinary.uploader.destroy(imageName);
-    if (!result.result === "ok") {
-      return res
-        .status(500)
-        .json({ message: ["Error al eliminar la imagen del viaje"] });
-    } // Fin del if(!result)
+    const {
+      nombre,
+      destino,
+      descripcion,
+      fechaInicioISO,
+      fechaFinISO,
+      precio,
+      capacidadAsientos
+    } = req.body;
 
     // Obtenemos los datos a actualizar
     const dataViaje = {
-      titulo: req.body.titulo,
-      destino: req.body.destino,
-      pais: req.body.pais,
-      precio: req.body.precio,
-      duracionDias: req.body.duracionDias,
-      fechaSalida: req.body.fechaSalida,
-      fechaRegreso: req.body.fechaRegreso,
-      descripcion: req.body.descripcion,
-      imagen: req.urlImage, 
+      nombre: nombre ? nombre.trim() : viaje.nombre,
+      destino: destino ? destino.trim() : viaje.destino,
+      descripcion: descripcion ? descripcion.trim() : viaje.descripcion,
+      fechaInicioISO: fechaInicioISO || viaje.fechaInicioISO,
+      fechaFinISO: fechaFinISO || viaje.fechaFinISO,
+      precio: precio !== undefined ? Number(precio) : viaje.precio,
+      capacidadAsientos: capacidadAsientos !== undefined ? Number(capacidadAsientos) : viaje.capacidadAsientos,
+      coverImageUrl,
+      galleryImageUrls,
       user: req.user.id,
     };
     const updatedViaje = await Viaje.findByIdAndUpdate(
@@ -189,6 +245,7 @@ export const updateViajeWithImage = async (req, res) => {
     );
     res.json(updatedViaje);
   } catch (error) {
+    console.log(error);
     res
       .status(500)
       .json({ message: ["Error al actualizar un viaje por ID"] });

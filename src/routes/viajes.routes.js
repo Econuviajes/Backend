@@ -23,6 +23,7 @@ import {
 
 //Importamos el middleware para subir imagenes a Cloudinary
 import { uploadToCloudinary } from "../middlewares/uploadImage.js";
+import { uploadMultipleToCloudinary } from "../middlewares/uploadMultipleImages.js";
 //Imporamos el middleware para administrador
 import { isAdmin } from "../middlewares/isAdmin.js";
 
@@ -30,12 +31,12 @@ const router = Router();
 //Ruta para obtener todos los viajes
 router.get("/viajes", authRequired, isAdmin, getViajes);
 
-//Ruta para crear un viaje
+//Ruta para crear un viaje (con múltiples imágenes)
 router.post(
   "/viajes",
   authRequired,
   isAdmin,
-  uploadToCloudinary,
+  uploadMultipleToCloudinary,
   validateSchema(viajeSchema), 
   createViaje
 ); //Usar middlewares para las validaciones
@@ -58,22 +59,21 @@ router.put(
   updateViajeWithoutImage
 );
 
-//Ruta para actualizar un viaje y ACTUALIZAR la imagen.
+//Ruta para actualizar un viaje SIN ACTUALIZAR imágenes (ruta alternativa).
 router.put(
   "/viajes/updatewithoutimage/:id",
   authRequired,
   isAdmin,
-  uploadToCloudinary,
   validateSchema(viajeUpdateSchemaWithoutImage), 
   updateViajeWithoutImage
 );
 
-//Ruta para actualizar un viaje y ACTUALIZAR la imagen.
+//Ruta para actualizar un viaje y ACTUALIZAR las imágenes (múltiples).
 router.put(
   "/viajes/updatewithimage/:id",
   authRequired,
   isAdmin,
-  uploadToCloudinary,
+  uploadMultipleToCloudinary,
   validateSchema(viajeUpdateSchema),
   updateViajeWithImage
 );

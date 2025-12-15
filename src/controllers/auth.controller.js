@@ -109,7 +109,7 @@ export const login = async (req, res) => {
       //No se encuentra el rol del usuario
       return res
         .status(400) //Retornamos error en el login
-        .ison({ message: ["El rol para el usuario no está definido"] });
+        .json({ message: ["El rol para el usuario no está definido"] });
 
     res.json({
       id: userFound._id,
@@ -135,17 +135,30 @@ export const logout = (req, res) => {
 
 // Función para el perfil del usuario
 export const profile = async (req, res) => {
-  //res.json(req.user);
-  const userFound = await User.findById(req.user.id);
+  try {
+    //res.json(req.user);
+    const userFound = await User.findById(req.user.id).populate("role");
 
-  if (!userFound)
-    //No se encontró en la base de datos
-    return res.status(400).json({ message: ["Usuario no encontrado"] });
+    if (!userFound)
+      //No se encontró en la base de datos
+      return res.status(400).json({ message: ["Usuario no encontrado"] });
 
-  res.json({
-    id: userFound._id,
-    username: userFound.username,
-    email: userFound.email,
-    role: userFound.role,
-  });
+    // Obtenemos el rol para el usuario
+    const role = await Role.findById(userFound.role);
+    if (!role) {
+      return res
+        .status(400)
+        .json({ message: ["El rol para el usuario no está definido"] });
+    }
+
+    res.json({
+      id: userFound._id,
+      username: userFound.username,
+      email: userFound.email,
+      role: role.role, // Devolver el string del role, no el ObjectId
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(400).json({ message: ["Error al obtener el perfil"] });
+  }
 }; // Fin del Profile

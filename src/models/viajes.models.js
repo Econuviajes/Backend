@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const viajeSchema = new mongoose.Schema(
     {
-        titulo:{
+        nombre: {
             type: String,
             required: true,
             trim: true
@@ -12,37 +12,36 @@ const viajeSchema = new mongoose.Schema(
             required: true,
             trim: true
         },
-        pais: {
+        descripcion: {
             type: String,
             required: true,
             trim: true
+        },
+        fechaInicioISO: {
+            type: String, // yyyy-mm-dd format
+            required: true
+        },
+        fechaFinISO: {
+            type: String, // yyyy-mm-dd format
+            required: true
         },
         precio: {
             type: Number,
             required: true,
             min: 0
         },
-        duracionDias: {
+        capacidadAsientos: {
             type: Number,
             required: true,
             min: 1
         },
-        fechaSalida: {
-            type: Date,
-            required: true
-        },
-        fechaRegreso: {
-            type: Date,
-            required: true
-        },
-        descripcion: {
-            type: String,
-            required: true,
-            trim: true
-        },
-        imagen: {
+        coverImageUrl: {
             type: String,
             required: true
+        },
+        galleryImageUrls: {
+            type: [String],
+            default: []
         },
         user: {
             type: mongoose.Schema.Types.ObjectId,
