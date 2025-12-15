@@ -1,5 +1,12 @@
 import Editor from "../models/editor.models.js";
 import { v2 as cloudinary } from "cloudinary";
+// Importamos los modelo de datos
+import User from "../models/user.models.js";
+import Role from "../models/roles.models.js";
+// Dependencias
+import bcryptjs from "bcryptjs";
+import dotenv from "dotenv";
+import { createAccessToken } from "../libs/jwt.js";
 
 // Función para obtener todos los editores
 export const getEditores = async (req, res) => {
@@ -14,29 +21,64 @@ export const getEditores = async (req, res) => {
 
 // Función para crear un editor
 export const createEditor = async (req, res) => {
-  try {
-    const { nombre, email, telefono, rol, activo } = req.body;
+  //console.log(req);
+  const { username, email, password } = req.body; //Esto es desestructurar variables. Descomponer el req
+  //console.log(req.body);
+  //console.log(username, email, password);
+  const roleAdmin = process.env.SETUP_ROLE_ADMIN;
 
-    // Verificar si el email ya existe
-    const editorExistente = await Editor.findOne({ email: email.toLowerCase() });
-    if (editorExistente) {
-      return res.status(400).json({ message: ["El email ya está registrado"] });
+  try {
+    //Validar que el email no este registrado en la BD
+    const userFound = await User.findOne({ email });
+    if (userFound)
+      //Ya se encuentra el email registrado en la BD
+      return res.status(400).json({ message: ["El email ya esta registrado"] }); //Retornamos error en el registro
+
+    // Encriptar la contraseña
+    const passwordHash = await bcryptjs.hash(password, 10);
+    //Obtenemos el rol por defecto para usuarios
+    //Y lo agregamos al usuario para guardarlo en la db con ese rol
+    const role = await Role.findOne({ role: roleAdmin });
+    if (!role) {
+      //No se encuentra el rol de usuarios inicializado
+      return res
+        .status(400) //Retornamos error en el registro
+        .json({ message: ["El rol para usuarios no está definido"] });
     }
 
-    const newEditor = new Editor({
-      nombre: nombre.trim(),
-      email: email.trim().toLowerCase(),
-      telefono: telefono ? telefono.trim() : undefined,
-      rol: rol || "Editor",
-      activo: activo !== undefined ? activo : true,
-      avatarUrl: req.urlImage || undefined,
+    const newUser = new User({
+      username,
+      email,
+      password: passwordHash,
+      role: role._id, //Asignamos el rol de usuario por defecto
     });
+    //console.log(newUser);
+    const userSaved = await newUser.save();
 
-    const savedEditor = await newEditor.save();
-    res.json(savedEditor);
+    //Generamos la cookie de inicio de seión
+    const token = await createAccessToken({ id: userSaved._id });
+    //Verificamos si el token de inicio de sesión lo generamos para el entorno local
+    //de desarrollo, o lo generamos para el servidor en la nube
+    if (process.env.ENVIRONMENT == "local") {
+      res.cookie("token", token, {
+        sameSite: "lax", //Para indicar que el back y front son locales para desarrollo
+      });
+    } else {
+      //El back y front se encuentran en distintos servidores remotos
+      res.cookie("token", token, {
+        sameSite: "none", //Para peticiones remotas secure: true, //Para activar https en deployment
+      });
+    } //Fin de if (proccess. env. ENVIRONMENT)
+    res.json({
+      id: userSaved._id,
+      username: userSaved.username,
+      email: userSaved.email,
+      role: role.role,
+    });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: ["Error al crear el editor"] });
+    console.log("Error al registrar");
+    return res.status(400).json({ message: ["Error al registrar editor"] });
   }
 };
 
@@ -66,19 +108,22 @@ export const updateEditorWithoutImage = async (req, res) => {
 
     // Verificar si el email ya existe en otro editor
     if (email && email.toLowerCase() !== editor.email) {
-      const editorExistente = await Editor.findOne({ 
+      const editorExistente = await Editor.findOne({
         email: email.toLowerCase(),
-        _id: { $ne: req.params.id }
+        _id: { $ne: req.params.id },
       });
       if (editorExistente) {
-        return res.status(400).json({ message: ["El email ya está registrado"] });
+        return res
+          .status(400)
+          .json({ message: ["El email ya está registrado"] });
       }
     }
 
     const dataEditor = {
       nombre: nombre ? nombre.trim() : editor.nombre,
       email: email ? email.trim().toLowerCase() : editor.email,
-      telefono: telefono !== undefined ? (telefono.trim() || undefined) : editor.telefono,
+      telefono:
+        telefono !== undefined ? telefono.trim() || undefined : editor.telefono,
       rol: rol || editor.rol,
       activo: activo !== undefined ? activo : editor.activo,
       avatarUrl: editor.avatarUrl,
@@ -129,19 +174,22 @@ export const updateEditorWithImage = async (req, res) => {
 
     // Verificar si el email ya existe en otro editor
     if (email && email.toLowerCase() !== editor.email) {
-      const editorExistente = await Editor.findOne({ 
+      const editorExistente = await Editor.findOne({
         email: email.toLowerCase(),
-        _id: { $ne: req.params.id }
+        _id: { $ne: req.params.id },
       });
       if (editorExistente) {
-        return res.status(400).json({ message: ["El email ya está registrado"] });
+        return res
+          .status(400)
+          .json({ message: ["El email ya está registrado"] });
       }
     }
 
     const dataEditor = {
       nombre: nombre ? nombre.trim() : editor.nombre,
       email: email ? email.trim().toLowerCase() : editor.email,
-      telefono: telefono !== undefined ? (telefono.trim() || undefined) : editor.telefono,
+      telefono:
+        telefono !== undefined ? telefono.trim() || undefined : editor.telefono,
       rol: rol || editor.rol,
       activo: activo !== undefined ? activo : editor.activo,
       avatarUrl: req.urlImage,
@@ -183,7 +231,9 @@ export const deleteEditor = async (req, res) => {
 
     const deletedEditor = await Editor.findByIdAndDelete(req.params.id);
     if (!deletedEditor) {
-      return res.status(404).json({ message: ["Editor no encontrado para eliminar"] });
+      return res
+        .status(404)
+        .json({ message: ["Editor no encontrado para eliminar"] });
     }
 
     return res.json(deletedEditor);
@@ -192,4 +242,3 @@ export const deleteEditor = async (req, res) => {
     return res.status(500).json({ message: ["Error al eliminar el editor"] });
   }
 };
-
