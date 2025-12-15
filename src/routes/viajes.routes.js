@@ -29,7 +29,10 @@ import { isAdmin } from "../middlewares/isAdmin.js";
 
 const router = Router();
 //Ruta para obtener todos los viajes
-router.get("/viajes", authRequired, isAdmin, getViajes);
+router.get("/viajes/getallviajes", getAllViajes);
+
+// Ruta para obtener MIS viajes (de un usuario autenticado)
+router.get("/viajes/mis-viajes", authRequired, getViajes);
 
 //Ruta para crear un viaje (con múltiples imágenes)
 router.post(
@@ -42,7 +45,9 @@ router.post(
 ); //Usar middlewares para las validaciones
 
 //Ruta para optener todos los viajes de todos los usuarios (admin)
-router.get("/viajes/getallviajes", getAllViajes);
+router.get("/viajes", authRequired, isAdmin, getViajes);
+
+
 
 //Ruta para obtener un viaje por ID
 router.get("/viajes/:id", authRequired, isAdmin, getViajeById);
