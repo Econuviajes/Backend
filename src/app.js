@@ -1,37 +1,71 @@
 import express from "express";
+import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
-import cors from "cors";
 
-// Importamos las rutas para usuarios
-import authRoutes from "./routes/user.routes.js";
-// Importamos las rutas para viajes
-import viajeRoutes from "./routes/viajes.routes.js";
-// Importamos las rutas para editores
-import editorRoutes from "./routes/editor.routes.js";
-// Importamos las rutas para clientes
-import clienteRoutes from "./routes/cliente.routes.js";
+// Rutas
+import authRoutes from "./routes/auth.routes.js";
+import viajesRoutes from "./routes/viajes.routes.js";
 
 const app = express();
+
+/* =========================
+   CORS CONFIG (CRÍTICO)
+========================= */
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://frontend-web-3rtr.onrender.com",
+];
+
 app.use(
   cors({
+    origin: function (origin, callback) {
+      // Permitir llamadas sin origin (Postman, server-to-server)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
-    origin: [
-      process.env.BASE_URL_BACKEND, //la dejamos para que funcione postman
-      process.env.BASE_URL_FRONTEND,
-    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+// Preflight
+app.options("*", cors());
+
+/* =========================
+   MIDDLEWARES
+========================= */
 app.use(morgan("dev"));
 app.use(express.json());
-app.use(cookieParser()); //Cookies en formato JSON
-app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
-// Indicamos que inicie el objeto authRoutes
-// https://localhost:3000/api/login     o /api/register
-app.use("/api/", authRoutes);
-app.use("/api/", viajeRoutes);
-app.use("/api/", editorRoutes);
-app.use("/api/", clienteRoutes);
+/* =========================
+   ROUTES
+========================= */
+app.use("/api", authRoutes);
+app.use("/api", viajesRoutes);
+
+/* =========================
+   HEALTH CHECK
+========================= */
+app.get("/api/health", (req, res) => {
+  res.json({ status: "OK" });
+});
+
+/* =========================
+   ERROR HANDLER
+========================= */
+app.use((err, req, res, next) => {
+  console.error(err.message);
+  res.status(500).json({
+    message: "Error interno del servidor",
+  });
+});
 
 export default app;
