@@ -1,52 +1,69 @@
-import multer from 'multer'
-import cloudinary from 'cloudinary'
+import multer from "multer";
+import cloudinary from "cloudinary";
 
 const storage = multer.memoryStorage();
-const upload = multer ({
-    storage: storage,
-    limits: {
-        fileSize: 5 * 1024 * 1024// 5 MB
-    }
-}).single('image');
 
-export const uploadToCloudinary = async (req, res, next) =>{
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ];
+    if (!allowedMimes.includes(file.mimetype)) {
+      return cb(new multer.MulterError("LIMIT_UNEXPECTED_FILE", file.fieldname));
+    }
+    cb(null, true);
+  },
+}).fields([
+  { name: "image", maxCount: 1 },  // ✅ por si mandas "image"
+  { name: "images", maxCount: 10 } // ✅ por si mandas "images" (tu caso)
+]);
+
+export const uploadToCloudinary = (req, res, next) => {
+  upload(req, res, async (err) => {
     try {
-        const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        upload(req, res, async (err)=>{
-        if (err){
-            console.log(err)
-            if (err.code == 'LIMIT_FILE_SIZE') {
-                return res.status(400).json({message: ['Tamaño del archivo excedido']})
-            }
-            else 
-                return res.status(400).json({message: ['Error al cargar la imagen']})
-        } // Fin del if(err)  
-        
-        if (!req.file)
-            return res.status(400).json({message: ['No se encontró la imagen']})
+      if (err) {
+        console.log(err);
 
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({ message: ["Tamaño del archivo excedido (máx 5MB)"] });
+        }
 
-        if (!allowedMimes.includes(req.file.mimetype))
-            return res.status(400)
-                            .json({message: ['Formato de imagen no permitido']})
-        
-        // Obtenemos los datos de la imagen del producto almacenada en memoria
-        const image = req.file;
+        // Si cae aquí por tipo no permitido o campo raro
+        return res.status(400).json({ message: ["Error al cargar la imagen"] });
+      }
 
-        // Convertimos el objeto de la imagen a un objeto base64 para poderlo almacenar como imagen en Cloudinary
-        const base64Image = Buffer.from(image.buffer).toString('base64');
-        const dataUri = "data:" + image.mimetype +";base64," + base64Image;
+      // Multer con .fields() deja archivos en req.files
+      const fileFromImage = req.files?.image?.[0];
+      const fileFromImages = req.files?.images?.[0];
 
-        // Subir la imagen a Cloudinary
-        const uploadResponse = await cloudinary.v2.uploader.upload(dataUri);
-        // Guardamos la URL que retonar Cloudinary en el objeto request
-        req.urlImage = uploadResponse.url;
-        
-                            //console.log(req.file); // Se guarda la imagen en memoria en req.file
+      const file = fileFromImage || fileFromImages;
 
-        next();
-    }); //Fin del upload
+      if (!file) {
+        return res.status(400).json({ message: ["No se encontró la imagen"] });
+      }
+
+      // Convertir a base64 para subir a Cloudinary
+      const base64Image = Buffer.from(file.buffer).toString("base64");
+      const dataUri = `data:${file.mimetype};base64,${base64Image}`;
+
+      const uploadResponse = await cloudinary.v2.uploader.upload(dataUri);
+
+      // Guardamos URL para controller
+      req.urlImage = uploadResponse.url;
+
+      // Por compatibilidad: si tu controller checa req.file
+      req.file = file;
+
+      return next();
     } catch (error) {
-        return res.status(400).json({message: [error.message]})
+      console.log(error);
+      return res.status(400).json({ message: [error.message] });
     }
-}
+  });
+};
