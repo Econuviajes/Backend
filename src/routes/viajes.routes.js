@@ -40,14 +40,12 @@ router.post(
   authRequired,
   isAdmin,
   uploadMultipleToCloudinary,
-  validateSchema(viajeSchema), 
+  validateSchema(viajeSchema),
   createViaje
 ); //Usar middlewares para las validaciones
 
 //Ruta para optener todos los viajes de todos los usuarios (admin)
 router.get("/viajes", authRequired, isAdmin, getViajes);
-
-
 
 //Ruta para obtener un viaje por ID
 router.get("/viajes/:id", authRequired, isAdmin, getViajeById);
@@ -55,12 +53,12 @@ router.get("/viajes/:id", authRequired, isAdmin, getViajeById);
 //Ruta para eliminar un viaje
 router.delete("/viajes/:id", authRequired, isAdmin, deleteViaje);
 
-//Ruta para actualizar un viaje SIN ACTUALIZAR imagen
+//Rutas para actualizar un viaje SIN ACTUALIZAR imagen
 router.put(
   "/viajes/:id",
   authRequired,
   isAdmin,
-  validateSchema(viajeUpdateSchema), 
+  validateSchema(viajeUpdateSchema),
   updateViajeWithoutImage
 );
 
@@ -69,7 +67,7 @@ router.put(
   "/viajes/updatewithoutimage/:id",
   authRequired,
   isAdmin,
-  validateSchema(viajeUpdateSchemaWithoutImage), 
+  validateSchema(viajeUpdateSchemaWithoutImage),
   updateViajeWithoutImage
 );
 
